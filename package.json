@@ -1,13 +1,13 @@
 {
   "name": "zxcvbn",
-  "version": "4.0.1",
+  "version": "5.0.0",
   "description": "realistic password strength estimation",
   "author": "Dan Wheeler",
   "license": "MIT",
   "main": "lib/main.js",
   "repository": {
     "type": "git",
-    "url": "git://github.com/dropbox/zxcvbn.git"
+    "url": "https://github.com/coinbase/zxcvbn.git"
   },
   "scripts": {
     "test": "coffeetape test/*.coffee | faucet",

@@ -4,6 +4,9 @@ time_estimates = require('./time_estimates')
 
 time = -> (new Date()).getTime()
 
+append_frequency_lists = (new_frequency_lists) ->
+  matching.append_frequency_lists(new_frequency_lists)
+
 zxcvbn = (password, user_inputs = []) ->
   start = time()
   # reset the user inputs matcher on a per-request basis to keep things stateless
@@ -20,4 +23,7 @@ zxcvbn = (password, user_inputs = []) ->
     result[prop] = val
   result
 
-module.exports = zxcvbn
+module.exports = {
+  score: zxcvbn,
+  append_frequency_lists: append_frequency_lists
+}

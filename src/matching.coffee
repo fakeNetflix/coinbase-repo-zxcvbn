@@ -97,6 +97,11 @@ matching =
     matches.sort (m1, m2) ->
       (m1.i - m2.i) or (m1.j - m2.j)
 
+  # append custom frequency lists from S3 on startup
+  append_frequency_lists: (new_frequency_lists) ->
+    for k,v of new_frequency_lists
+      RANKED_DICTIONARIES[k] = build_ranked_dict v
+
   # ------------------------------------------------------------------------------
   # omnimatch -- combine everything ----------------------------------------------
   # ------------------------------------------------------------------------------
