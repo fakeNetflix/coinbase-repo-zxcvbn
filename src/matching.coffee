@@ -10,23 +10,15 @@ build_ranked_dict = (ordered_list) ->
     i += 1
   result
 
-RANKED_DICTIONARIES =
-  passwords:    build_ranked_dict frequency_lists.passwords
-  english:      build_ranked_dict frequency_lists.english
-  surnames:     build_ranked_dict frequency_lists.surnames
-  male_names:   build_ranked_dict frequency_lists.male_names
-  female_names: build_ranked_dict frequency_lists.female_names
+RANKED_DICTIONARIES = {}
+for name, lst of frequency_lists
+  RANKED_DICTIONARIES[name] = build_ranked_dict lst
 
 GRAPHS =
   qwerty:     adjacency_graphs.qwerty
   dvorak:     adjacency_graphs.dvorak
   keypad:     adjacency_graphs.keypad
   mac_keypad: adjacency_graphs.mac_keypad
-
-SEQUENCES =
-  lower: 'abcdefghijklmnopqrstuvwxyz'
-  upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  digits: '0123456789'
 
 L33T_TABLE =
   a: ['4', '@']
@@ -43,22 +35,7 @@ L33T_TABLE =
   z: ['2']
 
 REGEXEN =
-  alphanumeric: /[a-zA-Z0-9]{2,}/g
-  alpha:        /[a-zA-Z]{2,}/g
-  alpha_lower:  /[a-z]{2,}/g
-  alpha_upper:  /[A-Z]{2,}/g
-  digits:       /\d{2,}/g
-  symbols:      /[\W_]{2,}/g # includes non-latin unicode chars
   recent_year:  /19\d\d|200\d|201\d/g
-
-REGEX_PRECEDENCE =
-  alphanumeric: 0
-  alpha:        1
-  alpha_lower:  2
-  alpha_upper:  2
-  digits:       2
-  symbols:      2
-  recent_year:  3
 
 DATE_MAX_YEAR = 2050
 DATE_MIN_YEAR = 1000
@@ -146,6 +123,7 @@ matching =
               rank: rank
               dictionary_name: dictionary_name
               reversed: false
+              l33t: false
     @sorted matches
 
   reverse_dictionary_match: (password, _ranked_dictionaries = RANKED_DICTIONARIES) ->
@@ -372,36 +350,65 @@ matching =
       lastIndex = j + 1
     matches
 
+  MAX_DELTA: 5
   sequence_match: (password) ->
-    matches = []
-    for sequence_name, sequence of SEQUENCES
-      for direction in [1, -1]
-        i = 0
-        while i < password.length
-          unless password.charAt(i) in sequence
-            i += 1
-            continue
-          j = i + 1
-          sequence_position = sequence.indexOf password.charAt(i)
-          while j < password.length
-            # mod by sequence length to allow sequences to wrap around: xyzabc
-            next_sequence_position = @mod sequence_position + direction, sequence.length
-            unless sequence.indexOf(password.charAt(j)) == next_sequence_position
-              break
-            j += 1
-            sequence_position = next_sequence_position
-          j -= 1
-          if j - i + 1 > 1
-            matches.push
-              pattern: 'sequence'
-              i: i
-              j: j
-              token: password[i..j]
-              sequence_name: sequence_name
-              sequence_space: sequence.length
-              ascending: direction == 1
-          i = j + 1
-    @sorted matches
+    # Identifies sequences by looking for repeated differences in unicode codepoint.
+    # this allows skipping, such as 9753, and also matches some extended unicode sequences
+    # such as Greek and Cyrillic alphabets.
+    #
+    # for example, consider the input 'abcdb975zy'
+    #
+    # password: a   b   c   d   b    9   7   5   z   y
+    # index:    0   1   2   3   4    5   6   7   8   9
+    # delta:      1   1   1  -2  -41  -2  -2  69   1
+    #
+    # expected result:
+    # [(i, j, delta), ...] = [(0, 3, 1), (5, 7, -2), (8, 9, 1)]
+
+    return [] if password.length == 1
+
+    update = (i, j, delta) =>
+      if j - i > 1 or Math.abs(delta) == 1
+        if 0 < Math.abs(delta) <= @MAX_DELTA
+          token = password[i..j]
+          if /^[a-z]+$/.test(token)
+            sequence_name = 'lower'
+            sequence_space = 26
+          else if /^[A-Z]+$/.test(token)
+            sequence_name = 'upper'
+            sequence_space = 26
+          else if /^\d+$/.test(token)
+            sequence_name = 'digits'
+            sequence_space = 10
+          else
+            # conservatively stick with roman alphabet size.
+            # (this could be improved)
+            sequence_name = 'unicode'
+            sequence_space = 26
+          result.push
+            pattern: 'sequence'
+            i: i
+            j: j
+            token: password[i..j]
+            sequence_name: sequence_name
+            sequence_space: sequence_space
+            ascending: delta > 0
+
+    result = []
+    i = 0
+    last_delta = null
+
+    for k in [1...password.length]
+      delta = password.charCodeAt(k) - password.charCodeAt(k - 1)
+      unless last_delta?
+        last_delta = delta
+      continue if delta == last_delta
+      j = k - 1
+      update(i, j, last_delta)
+      i = j
+      last_delta = delta
+    update(i, password.length - 1, last_delta)
+    result
 
   #-------------------------------------------------------------------------------
   # regex matching ---------------------------------------------------------------
@@ -420,21 +427,7 @@ matching =
           j: rx_match.index + rx_match[0].length - 1
           regex_name: name
           regex_match: rx_match
-    # currently, match list includes a bunch of redundancies:
-    # ex for every alpha_lower match, also an alpha and alphanumeric match of the same [i,j].
-    # ex for every recent_year match, also an alphanumeric match and digits match.
-    # use precedence to filter these redundancies out.
-    precedence_map = {} # maps from 'i-j' to current highest precedence
-    get_key = (match) -> "#{match.i}-#{match.j}"
-    for match in matches
-      key = get_key match
-      precedence = REGEX_PRECEDENCE[match.regex_name]
-      if key of precedence_map
-        highest_precedence = precedence_map[key]
-        continue if highest_precedence >= precedence
-      precedence_map[key] = precedence
-    @sorted matches.filter (match) ->
-      precedence_map[get_key(match)] == REGEX_PRECEDENCE[match.regex_name]
+    @sorted matches
 
   #-------------------------------------------------------------------------------
   # date matching ----------------------------------------------------------------
@@ -613,9 +606,9 @@ matching =
       year
     else if year > 50
       # 87 -> 1987
-      year + scoring.REFERENCE_YEAR - 100
+      year + 1900
     else
       # 15 -> 2015
-      year + scoring.REFERENCE_YEAR
+      year + 2000
 
 module.exports = matching
