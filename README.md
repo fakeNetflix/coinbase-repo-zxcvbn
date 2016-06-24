@@ -10,17 +10,24 @@ ________________________________________________________________________
 [![Build Status](https://travis-ci.org/dropbox/zxcvbn.svg?branch=master)](https://travis-ci.org/dropbox/zxcvbn)
 [![Sauce Test Status](https://saucelabs.com/browser-matrix/dropbox-zxcvbn.svg)](https://saucelabs.com/u/dropbox-zxcvbn)
 
-`zxcvbn` is a password strength estimator inspired by password crackers. Through pattern matching and conservative entropy calculations, it recognizes and weighs 30k common passwords, common names and surnames according to US census data, popular English words from Wikipedia and US television and movies, and other common patterns like dates, repeats (`aaa`), sequences (`abcd`), keyboard patterns (`qwertyuiop`), and l33t speak.
+`zxcvbn` is a password strength estimator inspired by password crackers. Through pattern matching and conservative estimation, it recognizes and weighs 30k common passwords, common names and surnames according to US census data, popular English words from Wikipedia and US television and movies, and other common patterns like dates, repeats (`aaa`), sequences (`abcd`), keyboard patterns (`qwertyuiop`), and l33t speak.
 
 Consider using zxcvbn as an algorithmic alternative to password composition policy — it is more secure, flexible, and usable when sites require a minimal complexity score in place of annoying rules like "passwords must contain three of {lower, upper, numbers, symbols}".
 
 * __More secure__: policies often fail both ways, allowing weak passwords (`P@ssword1`) and disallowing strong passwords.
 * __More flexible__: zxcvbn allows many password styles to flourish so long as it detects sufficient complexity — passphrases are rated highly given enough uncommon words, keyboard patterns are ranked based on length and number of turns, and capitalization adds more complexity when it's unpredictaBle.
-* __More usable__: Use zxcvbn to build simple, rule-free interfaces that give instant feedback. In addition to scoring, zxcvbn includes minimal, targeted verbal feedback that can help guide users towards less guessable passwords.
+* __More usable__: zxcvbn is designed to power simple, rule-free interfaces that give instant feedback. In addition to strength estimation, zxcvbn includes minimal, targeted verbal feedback that can help guide users towards less guessable passwords.
 
-At Dropbox we use zxcvbn on our [signup page](https://www.dropbox.com/register) and change/reset password flows. zxcvbn is designed for node and the browser, but we use our [python port](https://github.com/dropbox/python-zxcvbn) inside the Dropbox desktop client, [Objective C port](https://github.com/dropbox/zxcvbn-ios) in our iOS app, and Java port (not yet open sourced) on Android.
+At Dropbox we use zxcvbn ([Release notes](https://github.com/dropbox/zxcvbn/releases)) on our web, desktop, iOS and Android clients. If Javascript doesn't work for you, others have graciously ported the library to these languages:
 
-[Release notes](https://github.com/dropbox/zxcvbn/releases)
+* [`zxcvbn4j`](https://github.com/nulab/zxcvbn4j) (Java)
+* [`zxcvbn-ios`](https://github.com/dropbox/zxcvbn-ios) (Objective-C)
+* [`python-zxcvbn`](https://github.com/dropbox/python-zxcvbn) (Python)
+* [`zxcvbn-go`](https://github.com/nbutton23/zxcvbn-go) (Go)
+* [`zxcvbn-ruby`](https://github.com/envato/zxcvbn-ruby) (Ruby)
+* [`zxcvbn-php`](https://github.com/bjeavons/zxcvbn-php) (PHP)
+* [`zxcvbn-cs`](https://github.com/mickford/zxcvbn-cs) (C#/.NET)
+* [`szxcvbn`](https://github.com/tekul/szxcvbn) (Scala)
 
 For more motivation, see:
 
@@ -56,7 +63,7 @@ To pull in updates and bug fixes:
 bower update zxcvbn
 ```
 
-## Node / npm
+## Node / npm / MeteorJS
 
 zxcvbn works identically on the server.
 
@@ -65,11 +72,6 @@ $ npm install zxcvbn
 $ node
 > var zxcvbn = require('zxcvbn');
 > zxcvbn('Tr0ub4dour&3');
-```
-
-## Meteor (via [Atmosphere](https://atmospherejs.com/codetheweb/zxcvbn))
-``` shell
-meteor add codetheweb:zxcvbn
 ```
 
 ## RequireJS
@@ -140,7 +142,7 @@ zxcvbn(password, user_inputs=[])
 result.guesses            # estimated guesses needed to crack password
 result.guesses_log10      # order of magnitude of result.guesses
 
-result.crack_time_seconds # dictionary of back-of-the-envelope crack time
+result.crack_times_seconds # dictionary of back-of-the-envelope crack time
                           # estimations, in seconds, based on a few scenarios:
 {
   # online attack on a service that ratelimits password auth attempts.
@@ -163,9 +165,9 @@ result.crack_time_seconds # dictionary of back-of-the-envelope crack time
   offline_fast_hashing_1e10_per_second
 }
 
-result.crack_time_display # same keys as result.crack_time_seconds,
-                          # with friendlier display string values:
-                          # "less than a second", "3 hours", "centuries", etc.
+result.crack_times_display # same keys as result.crack_times_seconds,
+                           # with friendlier display string values:
+                           # "less than a second", "3 hours", "centuries", etc.
 
 result.score      # Integer from 0-4 (useful for implementing a strength bar)
 
@@ -216,7 +218,7 @@ Then try one of these alternatives:
 
 3. Use the HTML5 [`async`](http://www.w3schools.com/tags/att_script_async.asp) script attribute. Downside: [doesn't work](http://caniuse.com/#feat=script-async) in IE7-9 or Opera Mini.
 
-4. Include an inline `<script>` in `<head>` that asynchronously loads `zxcvbn.js` in the background. Despite the extra code I prefer this over (3) because it works in older browsers.
+4. Include an inline `<script>` in `<head>` that asynchronously loads `zxcvbn.js` in the background. Advantage over (3): it works in older browsers.
 
 ``` javascript
 // cross-browser asynchronous script loading for zxcvbn.
